@@ -238,7 +238,7 @@ function ScorecardQuiz({ onBack }) {
       adminFormData.append('actions', recommendations.actions.join(', '));
 
       // Send to admin
-      await fetch('https://formspree.io/f/maqaalvn', {
+      const response = await fetch('https://formspree.io/f/maqaalvn', {
         method: 'POST',
         body: adminFormData,
         headers: {
@@ -246,21 +246,9 @@ function ScorecardQuiz({ onBack }) {
         }
       });
 
-      // Send automated email to user
-      const userEmailFormData = new FormData();
-      userEmailFormData.append('email', email);
-      userEmailFormData.append('message', userEmailMessage);
-      userEmailFormData.append('_subject', `Your AI Readiness Score: ${percentage}% - Dellini`);
-
-      // Create a temporary Formspree endpoint for user emails
-      // For now, we'll use the same endpoint but with a different structure
-      await fetch('https://formspree.io/f/maqaalvn', {
-        method: 'POST',
-        body: userEmailFormData,
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
+      if (!response.ok) {
+        throw new Error('Failed to submit form');
+      }
 
       setSubmitted(true);
     } catch (error) {
