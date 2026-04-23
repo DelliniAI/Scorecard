@@ -187,11 +187,7 @@ function getRecommendations(percentage) {
 function ScorecardQuiz({ onBack }) {
   const [currentQuestion, setCurrentQuestion] = useState(0);
   const [scores, setScores] = useState({});
-  const [email, setEmail] = useState('');
-  const [showEmailForm, setShowEmailForm] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   const [results, setResults] = useState(null);
 
   const handleAnswer = (score) => {
@@ -201,66 +197,30 @@ function ScorecardQuiz({ onBack }) {
     if (currentQuestion < QUESTIONS.length - 1) {
       setCurrentQuestion(currentQuestion + 1);
     } else {
-      setShowEmailForm(true);
-    }
-  };
-
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    setError('');
-
-    try {
-      const totalScore = Object.values(scores).reduce((a, b) => a + b, 0);
+      // Calculate and show results immediately
+      const totalScore = Object.values({ ...newScores }).reduce((a, b) => a + b, 0);
       const maxScore = QUESTIONS.length * 4;
       const percentage = Math.round((totalScore / maxScore) * 100);
       const recommendations = getRecommendations(percentage);
 
-      // Store results for display
       setResults({
-        email,
         percentage,
         level: recommendations.level,
         description: recommendations.description,
         actions: recommendations.actions
       });
-
-      // Prepare the email message for the user
-      const actionsList = recommendations.actions.map((action, i) => `${i + 1}. ${action}`).join('\n');
-      const userEmailMessage = `Your AI Readiness Score: ${percentage}%\n\nReadiness Level: ${recommendations.level}\n\n${recommendations.description}\n\nRecommended Next Steps:\n${actionsList}\n\nReady to transform your manufacturing operations? Book a discovery call to get your personalized AI roadmap.\n\nhttps://calendly.com/zohour-hassan/dellini-discovery-call`;
-
-      // Submit to Formspree (sends to your inbox)
-      const adminFormData = new FormData();
-      adminFormData.append('email', email);
-      adminFormData.append('percentage', percentage);
-      adminFormData.append('level', recommendations.level);
-      adminFormData.append('description', recommendations.description);
-      adminFormData.append('actions', recommendations.actions.join(', '));
-
-      // Send to admin
-      const response = await fetch('https://formspree.io/f/maqaalvn', {
-        method: 'POST',
-        body: adminFormData,
-        headers: {
-          'Accept': 'application/json'
-        }
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to submit form');
-      }
-
       setSubmitted(true);
-    } catch (error) {
-      console.error('Error:', error);
-      // Show results anyway - form submission is secondary
-      setSubmitted(true);
-    } finally {
-      setLoading(false);
+    }
+  };
+
+  const handleBack = () => {
+    if (currentQuestion > 0) {
+      setCurrentQuestion(currentQuestion - 1);
     }
   };
 
   const progress = ((currentQuestion + 1) / QUESTIONS.length) * 100;
+  const question = QUESTIONS[currentQuestion];
 
   if (submitted && results) {
     return (
@@ -292,10 +252,6 @@ function ScorecardQuiz({ onBack }) {
                   ))}
                 </ul>
               </div>
-
-              <p className="email-confirmation">
-                ✓ Results sent to <strong>{results.email}</strong>
-              </p>
             </div>
           </div>
 
@@ -313,7 +269,7 @@ function ScorecardQuiz({ onBack }) {
                   <li>Personalized AI Roadmap tailored to your operations</li>
                   <li>Specific recommendations based on your readiness assessment</li>
                   <li>ROI analysis for potential AI implementations</li>
-                  <li>Timeline and resource requirements</li>
+                  <li>Clear next steps and timeline for transformation</li>
                 </ul>
               </div>
 
@@ -325,38 +281,11 @@ function ScorecardQuiz({ onBack }) {
               >
                 Book Your Discovery Call
               </a>
-
               <p className="cta-subtext">
-                30-minute call • No obligation • Expert consultation
+                30-minute call • No obligation • Let's discuss your AI transformation journey
               </p>
             </div>
           </div>
-
-          <button className="btn-back" onClick={onBack}>← Back to Home</button>
-        </div>
-      </div>
-    );
-  }
-
-  if (showEmailForm) {
-    return (
-      <div className="quiz-container">
-        <div className="quiz-card">
-          <h2>Get Your Results</h2>
-          <p>Enter your email to see your personalized AI Readiness Report</p>
-          <form onSubmit={handleSubmit}>
-            <input
-              type="email"
-              placeholder="your@email.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              required
-            />
-            {error && <p className="error-message">{error}</p>}
-            <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? 'Processing...' : 'See My Results'}
-            </button>
-          </form>
         </div>
       </div>
     );
@@ -366,30 +295,37 @@ function ScorecardQuiz({ onBack }) {
     <div className="quiz-container">
       <div className="quiz-card">
         <div className="quiz-header">
-          <button className="btn-back" onClick={onBack}>← Back</button>
-          <div className="progress-info">
+          <button 
+            className="back-button" 
+            onClick={handleBack}
+            disabled={currentQuestion === 0}
+          >
+            ← Back
+          </button>
+          <span className="question-counter">
             Question {currentQuestion + 1} of {QUESTIONS.length}
-          </div>
+          </span>
         </div>
 
         <div className="progress-bar">
           <div className="progress-fill" style={{ width: `${progress}%` }}></div>
         </div>
 
-        <div className="category-badge">{QUESTIONS[currentQuestion].category}</div>
+        <div className="question-content">
+          <span className="category-tag">{question.category}</span>
+          <h2 className="question-text">{question.question}</h2>
 
-        <h2>{QUESTIONS[currentQuestion].question}</h2>
-
-        <div className="options">
-          {QUESTIONS[currentQuestion].options.map((option, idx) => (
-            <button
-              key={idx}
-              className="option-btn"
-              onClick={() => handleAnswer(option.score)}
-            >
-              {option.text}
-            </button>
-          ))}
+          <div className="options-container">
+            {question.options.map((option, idx) => (
+              <button
+                key={idx}
+                className="option-button"
+                onClick={() => handleAnswer(option.score)}
+              >
+                {option.text}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
     </div>
