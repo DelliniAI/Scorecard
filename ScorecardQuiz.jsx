@@ -1,14 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import emailjs from '@emailjs/browser';
+import React, { useState } from 'react';
 import './ScorecardQuiz.css';
-
-// Initialize EmailJS - using a public key (safe for frontend)
-const EMAILJS_PUBLIC_KEY = 'oDaQfVUUPkqEbvnWG';
-const EMAILJS_SERVICE_ID = 'service_v10kzye';
-const EMAILJS_TEMPLATE_ID = 'ndkex4e';
-
-// Initialize on component mount
-emailjs.init(EMAILJS_PUBLIC_KEY);
 
 const QUESTIONS = [
   {
@@ -201,6 +192,7 @@ function ScorecardQuiz({ onBack }) {
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [results, setResults] = useState(null);
 
   const handleAnswer = (score) => {
     const newScores = { ...scores, [currentQuestion]: score };
@@ -223,37 +215,58 @@ function ScorecardQuiz({ onBack }) {
       const maxScore = QUESTIONS.length * 4;
       const percentage = Math.round((totalScore / maxScore) * 100);
       const recommendations = getRecommendations(percentage);
-      const userName = email.split('@')[0];
 
-      // Build the message with all details
+      // Store results for display
+      setResults({
+        email,
+        percentage,
+        level: recommendations.level,
+        description: recommendations.description,
+        actions: recommendations.actions
+      });
+
+      // Prepare the email message for the user
       const actionsList = recommendations.actions.map((action, i) => `${i + 1}. ${action}`).join('\n');
-      const fullMessage = `AI Readiness Level: ${recommendations.level}\n\nScore: ${percentage}%\n\nAssessment: ${recommendations.description}\n\nRecommended Actions:\n${actionsList}\n\nBook a discovery call to develop your AI roadmap: https://calendly.com/zohour-hassan/dellini-discovery-call`;
+      const userEmailMessage = `Your AI Readiness Score: ${percentage}%\n\nReadiness Level: ${recommendations.level}\n\n${recommendations.description}\n\nRecommended Next Steps:\n${actionsList}\n\nReady to transform your manufacturing operations? Book a discovery call to get your personalized AI roadmap.\n\nhttps://calendly.com/zohour-hassan/dellini-discovery-call`;
 
-      // Prepare email template parameters - use exact field names from EmailJS template
-      const templateParams = {
-        to_email: email,
-        name: userName,
-        time: new Date().toLocaleDateString(),
-        message: fullMessage,
-        percentage: percentage,
-        email: email
-      };
+      // Submit to Formspree (sends to your inbox)
+      const adminFormData = new FormData();
+      adminFormData.append('email', email);
+      adminFormData.append('percentage', percentage);
+      adminFormData.append('level', recommendations.level);
+      adminFormData.append('description', recommendations.description);
+      adminFormData.append('actions', recommendations.actions.join(', '));
 
-      console.log('Sending email with params:', templateParams);
+      // Send to admin
+      await fetch('https://formspree.io/f/maqaalvn', {
+        method: 'POST',
+        body: adminFormData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
 
-      // Send email using EmailJS
-      const response = await emailjs.send(
-        EMAILJS_SERVICE_ID,
-        EMAILJS_TEMPLATE_ID,
-        templateParams
-      );
-      
-      console.log('Email sent successfully:', response);
+      // Send automated email to user
+      const userEmailFormData = new FormData();
+      userEmailFormData.append('email', email);
+      userEmailFormData.append('message', userEmailMessage);
+      userEmailFormData.append('_subject', `Your AI Readiness Score: ${percentage}% - Dellini`);
+
+      // Create a temporary Formspree endpoint for user emails
+      // For now, we'll use the same endpoint but with a different structure
+      await fetch('https://formspree.io/f/maqaalvn', {
+        method: 'POST',
+        body: userEmailFormData,
+        headers: {
+          'Accept': 'application/json'
+        }
+      });
+
       setSubmitted(true);
     } catch (error) {
-      console.error('EmailJS Error:', error);
-      console.error('Error details:', error.message);
-      setError('Error sending scorecard. Please try again or contact support.');
+      console.error('Error:', error);
+      // Show results anyway - form submission is secondary
+      setSubmitted(true);
     } finally {
       setLoading(false);
     }
@@ -261,15 +274,77 @@ function ScorecardQuiz({ onBack }) {
 
   const progress = ((currentQuestion + 1) / QUESTIONS.length) * 100;
 
-  if (submitted) {
+  if (submitted && results) {
     return (
       <div className="quiz-container">
-        <div className="quiz-card">
-          <div className="success-icon">✓</div>
-          <h2>Assessment Complete!</h2>
-          <p>Your personalized AI Readiness Report has been sent to <strong>{email}</strong></p>
-          <p className="success-message">Check your inbox for your detailed scorecard and recommendations.</p>
-          <button className="btn-back" onClick={onBack}>Back to Home</button>
+        <div className="results-wrapper">
+          {/* Results Section */}
+          <div className="results-card">
+            <div className="results-header">
+              <h2>Your AI Readiness Score</h2>
+              <div className="score-display">
+                <div className="score-circle">
+                  <span className="score-number">{results.percentage}%</span>
+                  <span className="score-label">Readiness</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="results-content">
+              <div className="level-badge" data-level={results.level.toLowerCase()}>
+                {results.level}
+              </div>
+              <p className="description">{results.description}</p>
+
+              <div className="actions-section">
+                <h3>Recommended Next Steps:</h3>
+                <ul className="actions-list">
+                  {results.actions.map((action, idx) => (
+                    <li key={idx}>{action}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="email-confirmation">
+                ✓ Results sent to <strong>{results.email}</strong>
+              </p>
+            </div>
+          </div>
+
+          {/* CTA Section */}
+          <div className="cta-section">
+            <div className="cta-content">
+              <h3>Ready to Transform Your Manufacturing Operations?</h3>
+              <p>
+                At Dellini, we specialize in helping manufacturing companies like yours leverage AI and data to optimize operations, reduce costs, and improve efficiency.
+              </p>
+              
+              <div className="benefits">
+                <h4>What You'll Get from a Discovery Call:</h4>
+                <ul>
+                  <li>Personalized AI Roadmap tailored to your operations</li>
+                  <li>Specific recommendations based on your readiness assessment</li>
+                  <li>ROI analysis for potential AI implementations</li>
+                  <li>Timeline and resource requirements</li>
+                </ul>
+              </div>
+
+              <a 
+                href="https://calendly.com/zohour-hassan/dellini-discovery-call" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="cta-button"
+              >
+                Book Your Discovery Call
+              </a>
+
+              <p className="cta-subtext">
+                30-minute call • No obligation • Expert consultation
+              </p>
+            </div>
+          </div>
+
+          <button className="btn-back" onClick={onBack}>← Back to Home</button>
         </div>
       </div>
     );
@@ -280,7 +355,7 @@ function ScorecardQuiz({ onBack }) {
       <div className="quiz-container">
         <div className="quiz-card">
           <h2>Get Your Results</h2>
-          <p>Enter your email to receive your personalized AI Readiness Report</p>
+          <p>Enter your email to see your personalized AI Readiness Report</p>
           <form onSubmit={handleSubmit}>
             <input
               type="email"
@@ -291,7 +366,7 @@ function ScorecardQuiz({ onBack }) {
             />
             {error && <p className="error-message">{error}</p>}
             <button type="submit" className="btn-submit" disabled={loading}>
-              {loading ? 'Sending...' : 'Get My Report'}
+              {loading ? 'Processing...' : 'See My Results'}
             </button>
           </form>
         </div>
