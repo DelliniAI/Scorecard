@@ -318,7 +318,7 @@ export default function ScorecardQuiz() {
             {question.options.map((option, idx) => (
               <button
                 key={idx}
-                className="option-button"
+                className="option-btn"
                 onClick={() => handleAnswer(option.score)}
               >
                 {option.text}
