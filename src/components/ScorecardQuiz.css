@@ -84,12 +84,13 @@
   display: flex;
   flex-direction: column;
   gap: 12px;
+  width: 100%;
 }
 
 .option-btn {
-  background: #F8FAFC;
-  border: 2px solid #E2E8F0;
-  color: #1A202C;
+  background: linear-gradient(135deg, #3B3FA0 0%, #FF6B35 100%);
+  border: none;
+  color: white;
   padding: 16px;
   border-radius: 8px;
   text-align: left;
@@ -97,17 +98,18 @@
   font-weight: 500;
   cursor: pointer;
   transition: all 0.3s ease;
+  width: 100%;
+  box-shadow: 0 4px 12px rgba(59, 63, 160, 0.15);
 }
 
 .option-btn:hover {
-  border-color: #3B3FA0;
-  background: #F0F4FF;
-  transform: translateX(4px);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(59, 63, 160, 0.25);
 }
 
 .option-btn:active {
-  background: #E0E7FF;
-  border-color: #3B3FA0;
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(59, 63, 160, 0.15);
 }
 
 /* Email Form */
